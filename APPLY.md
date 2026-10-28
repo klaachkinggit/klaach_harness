@@ -20,10 +20,10 @@ Do not leave a `klaach_harness/` folder inside the project.
 
 | Component | Path |
 | --- | --- |
-| Rules | `AGENTS.md` |
-| MCP config | `.codex/config.toml` |
-| Runtime hook | `.codex/hooks.json`, `.codex/hooks/protect-env.sh` |
-| Skills | `.codex/skills/` |
+| Rules | `AGENTS.md`, `CLAUDE.md` (imports `AGENTS.md`) |
+| MCP config | `.codex/config.toml`, `.mcp.json` |
+| Runtime hook | `.codex/hooks.json`, `.claude/settings.json`, `.codex/hooks/protect-env.sh` |
+| Skills | `.codex/skills/`, copied to `.claude/skills/` |
 | Git hooks + CI | `.githooks/`, `.github/workflows/ci.yml` |
 | Harness docs | `README.md`, `HARNESS.md`, `PROFILES.md`, `APPLY.md` |
 | Agent environment map | `docs/agent-work-environment.md` |
@@ -43,4 +43,4 @@ tools/finish-harness.sh
 
 `tools/finish-harness.sh` is the final handoff gate. It should fail until verified changes are committed and the worktree is clean.
 
-Add project-specific rules below the marker at the bottom of `AGENTS.md`.
+Add project-specific rules below the marker at the bottom of `AGENTS.md`; both runtimes read them. Existing `.mcp.json` servers, `.claude/settings.json` settings, and project-local `.claude/skills/` are kept.

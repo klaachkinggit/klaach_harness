@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate Codex MCP server config.
+"""Generate MCP server config for Codex (.codex/config.toml) and Claude Code (.mcp.json).
 
 Usage:
-    python3 tools/gen-mcp.py codex
+    python3 tools/gen-mcp.py codex|claude|all
 """
 import json
 import os
@@ -53,14 +53,37 @@ def emit_codex():
     print("  wrote %s" % path)
 
 
+MANAGED = {server["name"] for server in SERVERS} | {"filesystem"}
+
+
+def emit_claude():
+    path = ".mcp.json"
+    existing = {}
+    if os.path.exists(path):
+        with open(path) as handle:
+            text = handle.read()
+        existing = json.loads(text) if text.strip() else {}
+    servers = {name: cfg for name, cfg in existing.get("mcpServers", {}).items() if name not in MANAGED}
+    dsn = os.environ.get("DATABASE_URL")
+    for server in SERVERS:
+        # .mcp.json is usually committed: reference secrets as ${VAR}, never inline them.
+        entry = {"command": server["command"], "args": ["${DATABASE_URL}" if dsn and arg == dsn else arg for arg in server["args"]]}
+        if server["env"]:
+            entry["env"] = {server["env_key"]: "${%s}" % server["env"]}
+        servers[server["name"]] = entry
+    existing["mcpServers"] = servers
+    with open(path, "w") as handle:
+        handle.write(json.dumps(existing, indent=2) + "\n")
+    print("  wrote %s" % path)
+
+
 def _without_managed_codex_servers(text):
-    managed = {server["name"] for server in SERVERS} | {"filesystem"}
     kept = []
     lines = text.splitlines()
     i = 0
     while i < len(lines):
         match = re.match(r"\[mcp_servers\.([^\].]+)(?:\.[^\]]+)?\]", lines[i])
-        if match and match.group(1) in managed:
+        if match and match.group(1) in MANAGED:
             i += 1
             while i < len(lines) and not lines[i].startswith("["):
                 i += 1
@@ -72,9 +95,12 @@ def _without_managed_codex_servers(text):
 
 if __name__ == "__main__":
     tool = (sys.argv[1] if len(sys.argv) > 1 else "").lower()
-    if tool != "codex":
-        print("Usage: gen-mcp.py <codex>", file=sys.stderr)
+    if tool not in ("codex", "claude", "all"):
+        print("Usage: gen-mcp.py <codex|claude|all>", file=sys.stderr)
         sys.exit(1)
     if not os.environ.get("GITHUB_TOKEN"):
         print("  note: GITHUB_TOKEN not set - github MCP will fail until you set it in .env", file=sys.stderr)
-    emit_codex()
+    if tool in ("codex", "all"):
+        emit_codex()
+    if tool in ("claude", "all"):
+        emit_claude()

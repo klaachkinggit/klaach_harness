@@ -5,7 +5,7 @@ REPO="klaachkinggit/klaach_harness"
 RAW="${HARNESS_RAW_BASE:-https://raw.githubusercontent.com/${REPO}/main}"
 RAW="${RAW%/}"
 
-echo "=== Codex Harness - Apply ==="
+echo "=== Codex + Claude Code Harness - Apply ==="
 echo "Target: $(pwd)"
 echo ""
 
@@ -73,8 +73,18 @@ existing = {}
 if target_path.exists() and target_path.read_text().strip():
     existing = json.loads(target_path.read_text())
 
+legacy = ("auto-format.sh", "block-dangerous.sh", "log-bash.sh", "pre-pr-gate.sh", "project-scope.sh", "protect-secrets.sh")
 merged = dict(existing)
-hooks = dict(existing.get("hooks", {}))
+hooks = {}
+# Drop hook entries that call removed legacy scripts, so old configs do not run missing files.
+for event, blocks in existing.get("hooks", {}).items():
+    kept = []
+    for block in blocks:
+        inner = [h for h in block.get("hooks", []) if not any(name in h.get("command", "") for name in legacy)]
+        if inner:
+            kept.append(dict(block, hooks=inner))
+    if kept:
+        hooks[event] = kept
 for event, blocks in template.get("hooks", {}).items():
     hooks[event] = blocks
 merged["hooks"] = hooks
@@ -84,9 +94,12 @@ PY
   echo "  wrote $dst"
 }
 
-echo "[1/5] Rules and docs..."
-rm -rf .claude prompts .mcp.json CLAUDE.md RULES.md sync-rules.sh .claude-extra.md
+echo "[1/6] Rules and docs..."
+rm -rf prompts RULES.md sync-rules.sh .claude-extra.md
 rm -rf \
+  .claude/commands/{adopt-harness,adr,assess-capabilities,audit,cost-review,diagnose,grill-me,learn,memorize,preflight,risk-review,security-scan,sparc,subagent,tdd,to-issues,zoom-out}.md \
+  .claude/hooks/{auto-format,block-dangerous,log-bash,pre-pr-gate,project-scope,protect-secrets}.sh \
+  .claude/skills/{awesome-design-md,frontend-design,impeccable,ui-ux-pro-max,web-design-guidelines} \
   .codex/hooks/auto-format.sh \
   .codex/hooks/block-dangerous.sh \
   .codex/hooks/log-bash.sh \
@@ -104,6 +117,7 @@ rm -rf \
   .codex/skills/matt-pocock-to-issues \
   .codex/skills/matt-pocock-zoom-out
 fetch_rules "AGENTS.md" "AGENTS.md"
+fetch_rules "CLAUDE.md" "CLAUDE.md"
 [ -f ".env.example" ] || fetch ".env.example" > .env.example 2>/dev/null || true
 for file in APPLY.md HARNESS.md PROFILES.md README.md docs/agent-work-environment.md; do
   fetch_safe "$file" "$file"
@@ -113,7 +127,7 @@ done
 mkdir -p docs/adr
 [ -f "docs/adr/0000-template.md" ] || fetch "docs/adr/0000-template.md" > docs/adr/0000-template.md 2>/dev/null || true
 
-echo "[2/5] MCP config..."
+echo "[2/6] MCP config..."
 mkdir -p tools
 for file in gen-mcp.py profile.py; do
   fetch "tools/${file}" > "tools/${file}"
@@ -123,12 +137,12 @@ for tool in audit-capabilities apply-profile remove-profile check-agent-context 
   fetch "tools/${tool}.sh" > "tools/${tool}.sh"
   chmod +x "tools/${tool}.sh"
 done
-python3 tools/gen-mcp.py codex
+python3 tools/gen-mcp.py all
 if ! command -v uvx >/dev/null 2>&1; then
   echo "  warning: uvx not found - git MCP will not start until uv is installed."
 fi
 
-echo "[3/5] Git + CI enforcement..."
+echo "[3/6] Git + CI enforcement..."
 mkdir -p .githooks
 for hook in pre-commit pre-push; do
   fetch ".githooks/${hook}" > ".githooks/${hook}"
@@ -145,7 +159,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   fi
 fi
 
-echo "[4/5] Codex runtime..."
+echo "[4/6] Codex runtime..."
 mkdir -p .codex/hooks .codex/skills
 fetch ".codex/hooks/protect-env.sh" > ".codex/hooks/protect-env.sh"
 chmod +x ".codex/hooks/protect-env.sh"
@@ -155,7 +169,16 @@ for skill in find-skills superpowers grill-me tdd diagnosing-bugs to-issues code
   fetch ".codex/skills/${skill}/SKILL.md" > ".codex/skills/${skill}/SKILL.md"
 done
 
-echo "[5/5] CodeGraph..."
+echo "[5/6] Claude Code runtime..."
+merge_json_config ".claude/settings.json" ".claude/settings.json"
+# Same skill source as Codex; a real dir so project-local Claude skills can sit beside them.
+[ -L .claude/skills ] && rm .claude/skills
+for skill in find-skills superpowers grill-me tdd diagnosing-bugs to-issues codebase-design improve-codebase-architecture ponytail; do
+  mkdir -p ".claude/skills/${skill}"
+  cp ".codex/skills/${skill}/SKILL.md" ".claude/skills/${skill}/SKILL.md"
+done
+
+echo "[6/6] CodeGraph..."
 if [ "${SKIP_CODEGRAPH:-0}" = "1" ]; then
   echo "  skipped CodeGraph (SKIP_CODEGRAPH=1)."
 elif command -v codegraph >/dev/null 2>&1; then

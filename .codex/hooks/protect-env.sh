@@ -44,7 +44,7 @@ except Exception:
     sys.exit(0)
 
 tool_input = payload.get("tool_input", {}) or {}
-for key in ("file_path", "filepath", "filePath", "path"):
+for key in ("file_path", "filepath", "filePath", "path", "notebook_path"):
     value = tool_input.get(key)
     if isinstance(value, str) and value:
         block(value)

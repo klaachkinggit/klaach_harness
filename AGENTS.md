@@ -1,4 +1,4 @@
-# Dev Harness - Codex Behavioral Rules
+# Dev Harness - Agent Behavioral Rules
 
 ## Foundational Rules (Karpathy)
 
@@ -23,7 +23,7 @@
 ## Workflow
 
 - Stay inside the project root for file and shell access unless the user explicitly names an external path.
-- Before non-trivial work, assess whether an existing Codex skill or MCP server helps. Use `find-skills` for discovery.
+- Before non-trivial work, assess whether an existing skill or MCP server helps. Use `find-skills` for discovery.
 - Use `sequential-thinking` for complex planning/debugging, multi-step refactors, ambiguous failures, or architecture choices.
 - Use `context7` before relying on memory for version-sensitive library, framework, SDK, CLI, or cloud-service behavior.
 - Use `superpowers` for small to medium implementation workflows that need brainstorm -> plan -> execute structure.
@@ -54,9 +54,10 @@
 
 ## Harness Scope
 
-- This harness is Codex-only.
+- This harness supports Codex and Claude Code from one set of sources.
 - Codex reads `AGENTS.md`, `.codex/config.toml`, `.codex/hooks.json`, `.codex/hooks/`, and `.codex/skills/`.
-- Do not add Claude Code mirrors or portable prompt packs back to the base harness.
+- Claude Code reads `CLAUDE.md` (imports `AGENTS.md`), `.mcp.json`, `.claude/settings.json`, and `.claude/skills/`.
+- Single source: edit `AGENTS.md`, `.codex/skills/`, `.codex/hooks/protect-env.sh`, and `tools/gen-mcp.py`; Claude files import, copy, or generate from them. No Claude-only rules, hooks, commands, skills, or portable prompt packs.
 - Optional MCP profiles are Vercel, Supabase, and Stripe only.
 
 ---

@@ -1,6 +1,6 @@
-# PROFILES.md - Optional Codex MCP Profiles
+# PROFILES.md - Optional MCP Profiles
 
-The base harness keeps optional stack integrations project-local.
+The base harness keeps optional stack integrations project-local. Profiles currently write `.codex/config.toml` only; add the same server to `.mcp.json` by hand for Claude Code.
 
 ## Profiles
 
@@ -25,11 +25,11 @@ tools/audit-capabilities.sh --expect-profile all
 
 ## Skill Policy
 
-Base skills are Codex-only and live under `.codex/skills/`:
+Base skills have one source, `.codex/skills/`, which `apply.sh` copies to `.claude/skills/`:
 
 - `find-skills`
 - `superpowers`
 - Matt Pocock workflow skills
 - `ponytail`
 
-Do not add Claude mirrors, portable prompts, broad UI-design bundles, or extra stack skills to the base harness. Use `find-skills` for project-specific additions.
+Single-source rule: edit a skill only under `.codex/skills/`; never maintain a separate Claude copy. Do not add Claude-only skills, portable prompts, broad UI-design bundles, or extra stack skills to the base harness. Use `find-skills` for project-specific additions.

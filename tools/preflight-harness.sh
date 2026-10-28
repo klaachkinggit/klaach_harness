@@ -26,7 +26,10 @@ run_shell_syntax() {
 }
 
 run_json_syntax() {
-  python3 -m json.tool .codex/hooks.json >/dev/null
+  local file
+  for file in .codex/hooks.json .claude/settings.json .mcp.json; do
+    python3 -m json.tool "$file" >/dev/null || return 1
+  done
 }
 
 run_python_compile() {

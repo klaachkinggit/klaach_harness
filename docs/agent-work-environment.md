@@ -1,6 +1,6 @@
 # AI Agent Work Environment
 
-This repo is a Codex-only harness. Treat it as an agent runtime contract, not a normal app.
+This repo is a harness for Codex and Claude Code. Treat it as an agent runtime contract, not a normal app.
 
 ## Start Here
 
@@ -19,10 +19,10 @@ If `.codegraph/` exists, use CodeGraph before broad file search. This source che
 
 | Area | Source owner | Generated or installed output | Verification |
 | --- | --- | --- | --- |
-| Codex rules | `AGENTS.md` | Target project `AGENTS.md` with project-specific tail preserved | `tools/check-agent-context.sh` |
-| MCP config | `tools/gen-mcp.py`, `tools/profile.py` | `.codex/config.toml` | `tools/audit-capabilities.sh`, `tools/check-profile.sh` |
-| Runtime hook | `.codex/hooks.json`, `.codex/hooks/protect-env.sh` | Same paths in target projects | `tools/test-harness-integration.sh` |
-| Skills | `.codex/skills/*/SKILL.md` | Same paths in target projects | `tools/check-agent-context.sh` |
+| Rules | `AGENTS.md`, `CLAUDE.md` (import only) | Target project `AGENTS.md`/`CLAUDE.md` with project-specific tail preserved | `tools/check-agent-context.sh` |
+| MCP config | `tools/gen-mcp.py`, `tools/profile.py` | `.codex/config.toml`, `.mcp.json` | `tools/audit-capabilities.sh`, `tools/check-profile.sh` |
+| Runtime hook | `.codex/hooks/protect-env.sh`, wired by `.codex/hooks.json` and `.claude/settings.json` | Same paths in target projects | `tools/test-harness-integration.sh` |
+| Skills | `.codex/skills/*/SKILL.md` (`.claude/skills` is a symlink here) | `.codex/skills/` and copies in `.claude/skills/` | `tools/check-agent-context.sh` |
 | Installer | `apply.sh` | Harness files copied into target projects | `tools/test-harness-integration.sh` |
 | Docs | `README.md`, `HARNESS.md`, `APPLY.md`, `PROFILES.md`, this file | Same docs in target projects | `tools/preflight-harness.sh` |
 | Git and CI | `.githooks/`, `.github/workflows/ci.yml` | Same paths in target projects | hooks, CI, `tools/preflight-harness.sh` |
@@ -47,7 +47,7 @@ If `.codegraph/` exists, use CodeGraph before broad file search. This source che
 
 - Edit source files, not generated output, unless the generated file is the versioned harness surface.
 - Keep source-repo checks separate from installed-project checks.
-- Do not add Claude mirrors, portable prompt packs, or broad optional profile support back to the base harness.
+- Keep one source per surface: Claude files import, copy, or generate from the Codex sources. Do not add Claude-only rules, hooks, commands, skills, portable prompt packs, or broad optional profile support.
 - Do not delete compatibility cleanup in `apply.sh` unless the integration test proves adopted projects no longer need it.
 - Keep `tools/preflight-harness.sh` as the normal verification entrypoint.
 

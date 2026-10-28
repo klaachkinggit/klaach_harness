@@ -24,9 +24,9 @@ check_text() {
   fi
 }
 
-for path in .claude CLAUDE.md .mcp.json prompts RULES.md sync-rules.sh; do
+for path in prompts RULES.md sync-rules.sh; do
   if [ -e "$path" ]; then
-    fail "$path should not exist in Codex-only harness"
+    fail "$path should not exist in the harness"
   else
     pass "$path absent"
   fi
@@ -37,6 +37,10 @@ check_file .codex/config.toml
 check_file .codex/hooks.json
 check_file .codex/hooks/protect-env.sh
 check_dir .codex/skills
+check_file CLAUDE.md
+check_file .mcp.json
+check_file .claude/settings.json
+check_dir .claude/skills
 check_file APPLY.md
 check_file HARNESS.md
 check_file PROFILES.md
@@ -47,6 +51,7 @@ check_text AGENTS.md "Foundational Rules (Karpathy)" "AGENTS.md keeps Karpathy r
 check_text AGENTS.md "ponytail" "AGENTS.md references Ponytail"
 check_text AGENTS.md "sequential-thinking" "AGENTS.md references sequential-thinking"
 check_text AGENTS.md "context7" "AGENTS.md references context7"
+check_text CLAUDE.md "^@AGENTS.md" "CLAUDE.md imports AGENTS.md"
 
 python3 - <<'PY'
 import json
@@ -99,13 +104,39 @@ for skill in sorted(expected_skills):
     if not content.startswith("---\n") or "\nname:" not in content or "\ndescription:" not in content:
         failures.append("%s missing skill frontmatter" % path)
 
+claude_skills = {item.name for item in Path(".claude/skills").iterdir() if item.is_dir()} if Path(".claude/skills").exists() else set()
+missing_claude = sorted(expected_skills - claude_skills)
+if missing_claude:
+    failures.append(".claude/skills missing: %s" % ", ".join(missing_claude))
+for skill in sorted(expected_skills & claude_skills):
+    if (Path(".claude/skills") / skill / "SKILL.md").read_text() != (Path(".codex/skills") / skill / "SKILL.md").read_text():
+        failures.append(".claude/skills/%s/SKILL.md differs from .codex/skills source" % skill)
+
+settings = json.loads(Path(".claude/settings.json").read_text())
+claude_commands = [
+    hook.get("command", "")
+    for block in settings.get("hooks", {}).get("PreToolUse", [])
+    for hook in block.get("hooks", [])
+]
+if 'bash "$CLAUDE_PROJECT_DIR/.codex/hooks/protect-env.sh"' not in claude_commands:
+    failures.append(".claude/settings.json should run the shared protect-env.sh")
+
+mcp = json.loads(Path(".mcp.json").read_text()).get("mcpServers", {})
+missing_mcp = sorted(base_mcp - set(mcp))
+if missing_mcp:
+    failures.append("Claude MCP missing: %s" % ", ".join(missing_mcp))
+if "filesystem" in mcp:
+    failures.append("Claude MCP must not include: filesystem")
+if mcp.get("github", {}).get("env", {}).get("GITHUB_PERSONAL_ACCESS_TOKEN") != "${GITHUB_TOKEN}":
+    failures.append("Claude github MCP should map ${GITHUB_TOKEN}")
+
 for failure in failures:
     print("FAIL " + failure)
 sys.exit(1 if failures else 0)
 PY
 status=$?
 if [ "$status" -eq 0 ]; then
-  pass "Codex skill, hook, and MCP surfaces present"
+  pass "Codex and Claude Code skill, hook, and MCP surfaces present"
 else
   failures=$((failures + 1))
 fi
